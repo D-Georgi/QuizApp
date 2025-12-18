@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz Editor</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .q-block { border-left: 5px solid #46178f; padding: 15px; background: #fafafa; margin: 15px 0; border-radius: 4px; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
+        .add { background: #1368ce; color: white; }
+        .save { background: #26890c; color: white; width: 100%; font-size: 1.2rem; margin-top: 20px; }
+        .opt-row { display: flex; gap: 5px; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Quiz Editor</h1>
+        <div id="questions-list"></div>
+        <button class="btn add" onclick="addQuestion()">+ Add New Question</button>
+        <button class="btn save" onclick="saveToGame()">SAVE & LAUNCH</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let questions = [];
+
+        function addQuestion() {
+            const id = Date.now();
+            const qObj = { id, type: 'MC', q: '', options: [], correct: '' };
+            questions.push(qObj);
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('questions-list');
+            list.innerHTML = '';
+            questions.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'q-block';
+                div.innerHTML = `
+                    <select onchange="updateQ(${q.id}, 'type', this.value)">
+                        <option value="MC" ${q.type==='MC'?'selected':''}>Multiple Choice</option>
+                        <option value="FITB" ${q.type==='FITB'?'selected':''}>Fill in Blank (Use _ for blanks)</option>
+                        <option value="FR" ${q.type==='FR'?'selected':''}>Free Response</option>
+                    </select>
+                    <input type="text" placeholder="Question text" value="${q.q}" oninput="updateQ(${q.id}, 'q', this.value)">
+                    <div id="opts-${q.id}"></div>
+                    ${q.type === 'MC' ? `<button class="btn" onclick="addOpt(${q.id})">+ Add Option</button>` : ''}
+                    <input type="text" placeholder="Correct Answer (Comma separated for multiple blanks)" value="${q.correct}" oninput="updateQ(${q.id}, 'correct', this.value)">
+                    <p style="color:red; cursor:pointer" onclick="removeQ(${q.id})">Delete Question</p>
+                `;
+                list.appendChild(div);
+                
+                if(q.type === 'MC') {
+                    const optArea = document.getElementById(`opts-${q.id}`);
+                    q.options.forEach((opt, i) => {
+                        const optInp = document.createElement('input');
+                        optInp.value = opt;
+                        optInp.placeholder = `Option ${i+1}`;
+                        optInp.oninput = (e) => { q.options[i] = e.target.value; };
+                        optArea.appendChild(optInp);
+                    });
+                }
+            });
+        }
+
+        function updateQ(id, key, val) { 
+            const q = questions.find(x => x.id === id);
+            q[key] = val;
+            if(key === 'type') render(); 
+        }
+        function addOpt(id) { questions.find(x => x.id === id).options.push(''); render(); }
+        function removeQ(id) { questions = questions.filter(x => x.id !== id); render(); }
+        function saveToGame() { socket.emit('updateQuestions', questions); window.location.href='/teacher.html'; }
+    </script>
+</body>
+</html>

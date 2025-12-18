@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #46178f; color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; text-align: center; }
+        .card { background: white; color: #333; padding: 25px; border-radius: 20px; width: 85%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        .mc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .btn-choice { border: none; border-radius: 8px; color: white; padding: 30px 5px; font-weight: bold; font-size: 1.1rem; }
+        .input-box { width: 100%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; }
+        .submit-btn { background: #1368ce; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <div id="join">
+            <h2>Your Name?</h2>
+            <input type="text" id="nick" class="input-box">
+            <button class="submit-btn" onclick="join()">JOIN GAME</button>
+        </div>
+        <div id="play" style="display:none;">
+            <p id="msg">Wait for the teacher...</p>
+            <div id="ui"></div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const colors = ['#e21b3c', '#1368ce', '#d89e00', '#26890c'];
+
+        function join() {
+            const n = document.getElementById('nick').value;
+            if(!n) return;
+            socket.emit('joinGame', n);
+            document.getElementById('join').style.display = 'none';
+            document.getElementById('play').style.display = 'block';
+        }
+
+        socket.on('newQuestion', (q) => {
+            const ui = document.getElementById('ui');
+            document.getElementById('msg').innerText = "Submit your answer!";
+            ui.innerHTML = '';
+
+            if(q.type === 'MC') {
+                const grid = document.createElement('div');
+                grid.className = 'mc-grid';
+                q.options.forEach((opt, i) => {
+                    const b = document.createElement('button');
+                    b.className = 'btn-choice';
+                    b.style.backgroundColor = colors[i % 4];
+                    b.innerText = opt;
+                    b.onclick = () => send(opt);
+                    grid.appendChild(b);
+                });
+                ui.appendChild(grid);
+            } else if(q.type === 'FITB') {
+                const parts = q.q.split('_');
+                const inputs = [];
+                parts.forEach((p, i) => {
+                    ui.append(document.createTextNode(p));
+                    if(i < parts.length - 1) {
+                        const inp = document.createElement('input');
+                        inp.className = 'input-box';
+                        inp.style.width = "60px";
+                        inp.oninput = (e) => { inputs[i] = e.target.value; };
+                        ui.appendChild(inp);
+                    }
+                });
+                const b = document.createElement('button');
+                b.className = 'submit-btn'; b.innerText = "SUBMIT";
+                b.onclick = () => send(inputs.join(','));
+                ui.appendChild(b);
+            } else {
+                const txt = document.createElement('textarea');
+                txt.className = 'input-box';
+                const b = document.createElement('button');
+                b.className = 'submit-btn'; b.innerText = "SUBMIT RESPONSE";
+                b.onclick = () => send(txt.value);
+                ui.append(txt, b);
+            }
+        });
+
+        function send(val) {
+            socket.emit('submitAnswer', val);
+            document.getElementById('ui').innerHTML = '';
+            document.getElementById('msg').innerText = "Done! Look at the big screen.";
+        }
+    </script>
+</body>
+</html>

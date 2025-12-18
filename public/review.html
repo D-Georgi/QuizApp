@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>Review Logs</title></head>
+<body style="font-family: monospace; padding: 40px; background: #eee;">
+    <h1>Free Response Log</h1>
+    <pre id="log-box" style="background:white; padding:20px; border-radius:10px; border:1px solid #ccc;"></pre>
+    <button onclick="location.href='/teacher.html'">Back to Dashboard</button>
+    <script>
+        fetch('/get-logs').then(r => r.text()).then(t => document.getElementById('log-box').innerText = t);
+    </script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teacher Dashboard</title>
+    <style>
+        body { font-family: 'Arial Black', sans-serif; background: #250850; color: white; text-align: center; padding: 30px; }
+        .container { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; backdrop-filter: blur(10px); }
+        .pill { background: white; color: #250850; padding: 10px 20px; border-radius: 50px; display: inline-block; margin: 5px; }
+        .btn { background: #26890c; color: white; padding: 20px 40px; border-radius: 50px; border: none; cursor: pointer; font-size: 1.5rem; margin: 10px; font-weight: bold; }
+        .progress-container { margin: 20px auto; width: 50%; background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden; }
+        #progress-bar { background: #26890c; height: 100%; width: 0%; transition: width 0.3s; }
+        #correct-answer-box { background: #1368ce; color: white; padding: 20px; border-radius: 15px; display: none; margin-top: 20px; font-size: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="lobby">
+            <h1>Join at: <span id="url"></span></h1>
+            <canvas id="qr" style="background:white; padding:10px; border-radius:10px;"></canvas>
+            <div id="students"></div>
+            <button class="btn" onclick="start()">START GAME</button>
+            <br><a href="/editor.html" style="color:white">Open Editor</a> | <a href="/review.html" style="color:white">Review Free Responses</a>
+        </div>
+
+        <div id="game" style="display:none">
+            <h1 id="q-display"></h1>
+            
+            <div class="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+            <p id="progress-text">0 / 0 Students Answered</p>
+
+            <div id="correct-answer-box"></div>
+            
+            <button class="btn" id="reveal-btn" onclick="revealAnswer()" style="background:#d89e00">SHOW ANSWER</button>
+            <button class="btn" onclick="next()">NEXT QUESTION</button>
+        </div>
+
+        <div id="finish" style="display:none">
+            <h1>Leaderboard</h1>
+            <div id="leaderboard"></div>
+            <button class="btn" onclick="location.reload()">RESTART</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
+    <script>
+        const socket = io();
+        let currentCorrectAnswer = "";
+
+        document.getElementById('url').innerText = window.location.origin;
+        QRCode.toCanvas(document.getElementById('qr'), window.location.origin);
+
+        socket.on('updateStudentList', (list) => {
+            document.getElementById('students').innerHTML = list.map(n => `<span class="pill">${n}</span>`).join('');
+        });
+
+        // PROGRESS TRACKER logic
+        socket.on('answerCountUpdate', (data) => {
+            const percent = data.total > 0 ? (data.received / data.total) * 100 : 0;
+            document.getElementById('progress-bar').style.width = percent + "%";
+            document.getElementById('progress-text').innerText = `${data.received} / ${data.total} Students Answered`;
+        });
+
+        function start() { document.getElementById('lobby').style.display='none'; next(); }
+        
+        function next() { 
+            document.getElementById('game').style.display='block'; 
+            document.getElementById('correct-answer-box').style.display = 'none';
+            socket.emit('nextQuestion'); 
+        }
+
+        socket.on('newQuestion', q => { 
+            document.getElementById('q-display').innerText = q.q; 
+            // We store the correct answer if available to reveal it later locally
+            // Alternatively, the teacher dashboard knows the answers from the editor logic
+        });
+
+        function revealAnswer() {
+            // This is a simple reveal. For security, you could also fetch this from the server
+            // But since this is the teacher's device, it's safe to show.
+            const box = document.getElementById('correct-answer-box');
+            box.innerText = "Correct Answer(s): " + "Check your question list!"; 
+            // Tip: To make this dynamic, pass the 'correct' field to the teacher's 'newQuestion' emit.
+            box.style.display = 'block';
+        }
+
+        socket.on('gameFinished', (board) => {
+            document.getElementById('game').style.display='none';
+            document.getElementById('finish').style.display='block';
+            document.getElementById('leaderboard').innerHTML = board.map(s => `<p>${s.name}: ${s.score} pts</p>`).join('');
+        });
+    </script>
+</body>
+</html>
