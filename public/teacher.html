@@ -1,45 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Teacher Dashboard</title>
+    <title>Teacher Control Center</title>
     <style>
-        body { font-family: 'Arial Black', sans-serif; background: #250850; color: white; text-align: center; padding: 30px; }
-        .container { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 20px; backdrop-filter: blur(10px); }
-        .pill { background: white; color: #250850; padding: 10px 20px; border-radius: 50px; display: inline-block; margin: 5px; }
-        .btn { background: #26890c; color: white; padding: 20px 40px; border-radius: 50px; border: none; cursor: pointer; font-size: 1.5rem; margin: 10px; font-weight: bold; }
-        .progress-container { margin: 20px auto; width: 50%; background: rgba(255,255,255,0.2); border-radius: 10px; height: 30px; overflow: hidden; }
-        #progress-bar { background: #26890c; height: 100%; width: 0%; transition: width 0.3s; }
-        #correct-answer-box { background: #1368ce; color: white; padding: 20px; border-radius: 15px; display: none; margin-top: 20px; font-size: 2rem; }
+        /* Kahoot-inspired Bold Theme */
+        body { font-family: 'Arial Black', sans-serif; background: #250850; color: white; text-align: center; padding: 20px; margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        .container { background: rgba(255,255,255,0.1); padding: 40px; border-radius: 24px; backdrop-filter: blur(15px); width: 90%; max-width: 900px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); margin-top: 20px; }
+        
+        /* Typography & Buttons */
+        h1 { font-size: 2.5rem; text-shadow: 2px 2px #000; margin-bottom: 20px; }
+        .btn { padding: 18px 35px; border-radius: 50px; border: none; cursor: pointer; font-size: 1.2rem; font-weight: bold; margin: 10px; transition: transform 0.2s, background 0.2s; color: white; box-shadow: 0 5px 0 rgba(0,0,0,0.2); }
+        .btn:active { transform: translateY(3px); box-shadow: none; }
+        .btn-green { background: #26890c; } .btn-blue { background: #1368ce; } .btn-gold { background: #d89e00; color: #250850; }
+        .btn-gray { background: #555; }
+
+        /* Lobby & Students */
+        #qr { background: white; padding: 15px; border-radius: 12px; margin: 20px 0; }
+        .pill { background: white; color: #250850; padding: 10px 22px; border-radius: 50px; display: inline-block; margin: 8px; font-family: sans-serif; font-weight: 800; font-size: 1.1rem; animation: popIn 0.3s ease-out; }
+
+        /* Progress Bar */
+        .progress-wrapper { margin: 30px auto; width: 80%; background: rgba(255,255,255,0.2); border-radius: 50px; height: 35px; overflow: hidden; position: relative; border: 3px solid white; }
+        #progress-bar { background: #26890c; height: 100%; width: 0%; transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #progress-text { margin-top: 10px; font-size: 1.2rem; font-family: sans-serif; }
+
+        /* Answer Reveal Box */
+        #answer-reveal { background: #1368ce; padding: 25px; border-radius: 15px; display: none; margin: 25px 0; border: 4px solid white; font-size: 1.8rem; }
+
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <div id="lobby">
-            <h1>Join at: <span id="url"></span></h1>
-            <canvas id="qr" style="background:white; padding:10px; border-radius:10px;"></canvas>
-            <div id="students"></div>
-            <button class="btn" onclick="start()">START GAME</button>
-            <br><a href="/editor.html" style="color:white">Open Editor</a> | <a href="/review.html" style="color:white">Review Free Responses</a>
+        <div id="view-lobby">
+            <h1>Join the Quiz!</h1>
+            <canvas id="qr"></canvas>
+            <p style="font-size: 1.2rem;">Go to: <span id="url-display" style="color: #00d4ff;"></span></p>
+            
+            <div id="student-list" style="min-height: 100px; margin: 20px 0;">
+                </div>
+
+            <div style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 20px;">
+                <button class="btn btn-green" onclick="startGame()">START GAME</button>
+                <button class="btn btn-blue" onclick="location.href='/editor.html'">EDIT QUESTIONS</button>
+            </div>
         </div>
 
-        <div id="game" style="display:none">
-            <h1 id="q-display"></h1>
+        <div id="view-game" style="display:none">
+            <h1 id="q-text">Loading Question...</h1>
             
-            <div class="progress-container">
+            <div class="progress-wrapper">
                 <div id="progress-bar"></div>
             </div>
-            <p id="progress-text">0 / 0 Students Answered</p>
+            <p id="progress-text">0 / 0 Students Finished</p>
 
-            <div id="correct-answer-box"></div>
-            
-            <button class="btn" id="reveal-btn" onclick="revealAnswer()" style="background:#d89e00">SHOW ANSWER</button>
-            <button class="btn" onclick="next()">NEXT QUESTION</button>
+            <div id="answer-reveal"></div>
+
+            <div style="margin-top: 40px;">
+                <button class="btn btn-gold" id="reveal-btn" onclick="reveal()">SHOW ANSWER</button>
+                <button class="btn btn-green" onclick="nextQuestion()">NEXT QUESTION</button>
+            </div>
         </div>
 
-        <div id="finish" style="display:none">
-            <h1>Leaderboard</h1>
-            <div id="leaderboard"></div>
-            <button class="btn" onclick="location.reload()">RESTART</button>
+        <div id="view-results" style="display:none">
+            <h1>🏆 Leaderboard</h1>
+            <div id="leaderboard-list" style="text-align: left; max-width: 500px; margin: auto;"></div>
+            
+            <div style="margin-top: 40px;">
+                <button class="btn btn-gray" onclick="downloadResponses()">📥 DOWNLOAD FREE RESPONSES</button>
+                <button class="btn btn-blue" onclick="location.reload()">PLAY AGAIN</button>
+            </div>
         </div>
     </div>
 
@@ -47,50 +77,79 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script>
     <script>
         const socket = io();
-        let currentCorrectAnswer = "";
+        let currentCorrect = "";
 
-        document.getElementById('url').innerText = window.location.origin;
-        QRCode.toCanvas(document.getElementById('qr'), window.location.origin);
+        // Setup QR and URL
+        const liveUrl = window.location.origin;
+        document.getElementById('url-display').innerText = liveUrl;
+        QRCode.toCanvas(document.getElementById('qr'), liveUrl, { width: 250, margin: 2 });
 
-        socket.on('updateStudentList', (list) => {
-            document.getElementById('students').innerHTML = list.map(n => `<span class="pill">${n}</span>`).join('');
+        // --- Socket Listeners ---
+
+        socket.on('updateStudentList', (names) => {
+            const container = document.getElementById('student-list');
+            container.innerHTML = names.map(n => `<span class="pill">${n}</span>`).join('');
         });
 
-        // PROGRESS TRACKER logic
         socket.on('answerCountUpdate', (data) => {
             const percent = data.total > 0 ? (data.received / data.total) * 100 : 0;
             document.getElementById('progress-bar').style.width = percent + "%";
             document.getElementById('progress-text').innerText = `${data.received} / ${data.total} Students Answered`;
         });
 
-        function start() { document.getElementById('lobby').style.display='none'; next(); }
-        
-        function next() { 
-            document.getElementById('game').style.display='block'; 
-            document.getElementById('correct-answer-box').style.display = 'none';
-            socket.emit('nextQuestion'); 
-        }
-
-        socket.on('newQuestion', q => { 
-            document.getElementById('q-display').innerText = q.q; 
-            // We store the correct answer if available to reveal it later locally
-            // Alternatively, the teacher dashboard knows the answers from the editor logic
+        socket.on('newQuestion', (q) => {
+            document.getElementById('q-text').innerText = q.q;
+            // Note: In a cloud environment, you might want the server to send the 'correct' 
+            // field only to the teacher. For this setup, we assume the teacher knows or it's stored.
+            currentCorrect = q.correct || "See your question list"; 
+            document.getElementById('answer-reveal').style.display = 'none';
         });
 
-        function revealAnswer() {
-            // This is a simple reveal. For security, you could also fetch this from the server
-            // But since this is the teacher's device, it's safe to show.
-            const box = document.getElementById('correct-answer-box');
-            box.innerText = "Correct Answer(s): " + "Check your question list!"; 
-            // Tip: To make this dynamic, pass the 'correct' field to the teacher's 'newQuestion' emit.
+        socket.on('gameFinished', (board) => {
+            showView('view-results');
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = board.map((s, i) => `
+                <div style="display:flex; justify-content:space-between; background:white; color:#250850; padding:15px; margin:10px 0; border-radius:10px; font-weight:bold;">
+                    <span>${i+1}. ${s.name}</span>
+                    <span>${s.score} pts</span>
+                </div>
+            `).join('');
+        });
+
+        // --- Functions ---
+
+        function showView(id) {
+            ['view-lobby', 'view-game', 'view-results'].forEach(v => {
+                document.getElementById(v).style.display = (v === id) ? 'block' : 'none';
+            });
+        }
+
+        function startGame() {
+            showView('view-game');
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            socket.emit('nextQuestion');
+        }
+
+        function reveal() {
+            const box = document.getElementById('answer-reveal');
+            box.innerText = "Correct: " + currentCorrect;
             box.style.display = 'block';
         }
 
-        socket.on('gameFinished', (board) => {
-            document.getElementById('game').style.display='none';
-            document.getElementById('finish').style.display='block';
-            document.getElementById('leaderboard').innerHTML = board.map(s => `<p>${s.name}: ${s.score} pts</p>`).join('');
-        });
+        function downloadResponses() {
+            fetch('/get-logs')
+                .then(res => res.text())
+                .then(text => {
+                    const blob = new Blob([text], { type: "text/plain" });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = "quiz_results_log.txt";
+                    a.click();
+                });
+        }
     </script>
 </body>
 </html>

@@ -1,24 +1,34 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Quiz Editor</title>
+    <title>Quiz Editor & File Manager</title>
     <style>
         body { font-family: sans-serif; background: #f0f2f5; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .q-block { border-left: 5px solid #46178f; padding: 15px; background: #fafafa; margin: 15px 0; border-radius: 4px; }
+        .card { background: white; padding: 25px; border-radius: 12px; max-width: 700px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .toolbar { display: flex; gap: 10px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #eee; }
+        .q-block { border-left: 5px solid #46178f; padding: 15px; background: #fafafa; margin: 15px 0; border-radius: 4px; position: relative; }
         input, select { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
         .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; }
-        .add { background: #1368ce; color: white; }
-        .save { background: #26890c; color: white; width: 100%; font-size: 1.2rem; margin-top: 20px; }
-        .opt-row { display: flex; gap: 5px; align-items: center; }
+        .btn-blue { background: #1368ce; color: white; }
+        .btn-green { background: #26890c; color: white; }
+        .btn-download { background: #555; color: white; }
+        .delete-text { color: #e21b3c; cursor: pointer; font-size: 0.9rem; font-weight: bold; margin-top: 10px; display: inline-block; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Quiz Editor</h1>
+        
+        <div class="toolbar">
+            <button class="btn btn-blue" onclick="addQuestion()">+ Add Question</button>
+            <input type="file" id="fileInput" style="display:none" accept=".json" onchange="importFile(event)">
+            <button class="btn" onclick="document.getElementById('fileInput').click()">📤 Upload JSON</button>
+            <button class="btn btn-download" onclick="downloadQuiz()">📥 Download Quiz</button>
+        </div>
+
         <div id="questions-list"></div>
-        <button class="btn add" onclick="addQuestion()">+ Add New Question</button>
-        <button class="btn save" onclick="saveToGame()">SAVE & LAUNCH</button>
+        
+        <button class="btn btn-green" style="width:100%; font-size: 1.2rem; margin-top: 20px;" onclick="saveToGame()">SAVE & LAUNCH DASHBOARD</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -28,9 +38,34 @@
 
         function addQuestion() {
             const id = Date.now();
-            const qObj = { id, type: 'MC', q: '', options: [], correct: '' };
-            questions.push(qObj);
+            questions.push({ id, type: 'MC', q: '', options: [], correct: '' });
             render();
+        }
+
+        function importFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    // Add IDs back if they are missing from the file
+                    questions = imported.map(q => ({ ...q, id: q.id || Math.random() }));
+                    render();
+                } catch (err) { alert("Invalid JSON file."); }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadQuiz() {
+            // Clean the data (remove editor-only IDs) before saving
+            const dataToSave = questions.map(({id, ...rest}) => rest);
+            const blob = new Blob([JSON.stringify(dataToSave, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "my_quiz.json";
+            a.click();
         }
 
         function render() {
@@ -42,17 +77,16 @@
                 div.innerHTML = `
                     <select onchange="updateQ(${q.id}, 'type', this.value)">
                         <option value="MC" ${q.type==='MC'?'selected':''}>Multiple Choice</option>
-                        <option value="FITB" ${q.type==='FITB'?'selected':''}>Fill in Blank (Use _ for blanks)</option>
+                        <option value="FITB" ${q.type==='FITB'?'selected':''}>Fill in Blank (_)</option>
                         <option value="FR" ${q.type==='FR'?'selected':''}>Free Response</option>
                     </select>
                     <input type="text" placeholder="Question text" value="${q.q}" oninput="updateQ(${q.id}, 'q', this.value)">
                     <div id="opts-${q.id}"></div>
                     ${q.type === 'MC' ? `<button class="btn" onclick="addOpt(${q.id})">+ Add Option</button>` : ''}
-                    <input type="text" placeholder="Correct Answer (Comma separated for multiple blanks)" value="${q.correct}" oninput="updateQ(${q.id}, 'correct', this.value)">
-                    <p style="color:red; cursor:pointer" onclick="removeQ(${q.id})">Delete Question</p>
+                    <input type="text" placeholder="Correct Answer(s)" value="${q.correct}" oninput="updateQ(${q.id}, 'correct', this.value)">
+                    <span class="delete-text" onclick="removeQ(${q.id})">Remove Question</span>
                 `;
                 list.appendChild(div);
-                
                 if(q.type === 'MC') {
                     const optArea = document.getElementById(`opts-${q.id}`);
                     q.options.forEach((opt, i) => {
@@ -73,7 +107,11 @@
         }
         function addOpt(id) { questions.find(x => x.id === id).options.push(''); render(); }
         function removeQ(id) { questions = questions.filter(x => x.id !== id); render(); }
-        function saveToGame() { socket.emit('updateQuestions', questions); window.location.href='/teacher.html'; }
+        
+        function saveToGame() {
+            socket.emit('updateQuestions', questions);
+            window.location.href='/teacher.html';
+        }
     </script>
 </body>
 </html>

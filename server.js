@@ -20,6 +20,9 @@ function getLocalIp() {
     return 'localhost';
 }
 
+//const LOCAL_IP = getLocalIp();
+//const PORT = 3000;
+
 let gameState = {
     currentQuestionIndex: -1,
     students: {}, 
