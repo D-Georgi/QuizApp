@@ -95,6 +95,45 @@
             document.getElementById('ui').innerHTML = '';
             document.getElementById('msg').innerText = "Done! Look at the big screen.";
         }
+
+        socket.on('gameFinished', (data) => {
+            const playArea = document.getElementById('play');
+            const msg = document.getElementById('msg');
+            
+            const myName = document.getElementById('nick').value;
+            const myResult = data.leaderboard.find(s => s.name === myName);
+            const myRank = data.leaderboard.findIndex(s => s.name === myName) + 1;
+
+            msg.innerText = "Game Complete!";
+            playArea.innerHTML = `
+                <div style="margin-top:20px;">
+                    <h1 style="font-size: 3rem; margin:0;">#${myRank}</h1>
+                    <p style="font-size: 1.2rem; font-weight:bold;">${myResult ? myResult.score : 0} Points</p>
+                    <hr style="border: 1px solid #ddd; margin: 20px 0;">
+                    <h3>Your Correct Answers:</h3>
+                    <div id="personal-review" style="text-align:left; max-height: 200px; overflow-y: auto; padding: 10px;">
+                    </div>
+                </div>
+            `;
+
+            const reviewList = document.getElementById('personal-review');
+            let correctCount = 0;
+
+            data.questions.forEach((q, index) => {
+                const correctStudents = data.reviewData[index] || [];
+                if (correctStudents.includes(myName)) {
+                    const item = document.createElement('div');
+                    item.style = "background: #d4edda; color: #155724; padding: 10px; margin-bottom: 5px; border-radius: 5px; font-size: 0.9rem;";
+                    item.innerHTML = `<strong>Q${index + 1}:</strong> ${q.q}`;
+                    reviewList.appendChild(item);
+                    correctCount++;
+                }
+            });
+
+            if (correctCount === 0) {
+                reviewList.innerHTML = "<p style='color:#666; text-align:center;'>Keep studying! You'll get them next time.</p>";
+            }
+        });
     </script>
 </body>
 </html>
