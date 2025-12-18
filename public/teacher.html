@@ -87,9 +87,25 @@
         // --- Socket Listeners ---
 
         socket.on('updateStudentList', (names) => {
-            const container = document.getElementById('student-list');
-            container.innerHTML = names.map(n => `<span class="pill">${n}</span>`).join('');
+        const container = document.getElementById('student-list');
+        container.innerHTML = names.map(n => `
+            <div class="pill">
+                ${n} 
+                <span 
+                    onclick="kick('${n}')" 
+                    style="margin-left:10px; color:#e21b3c; cursor:pointer; font-weight:bold;"
+                    title="Remove Student"
+                >×</span>
+            </div>
+        `).join('');
         });
+
+        // Function to send the kick signal to the server
+        function kick(name) {
+            if (confirm(`Are you sure you want to remove ${name}?`)) {
+                socket.emit('kickStudent', name);
+            }
+        }
 
         socket.on('answerCountUpdate', (data) => {
             const percent = data.total > 0 ? (data.received / data.total) * 100 : 0;

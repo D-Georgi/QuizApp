@@ -78,6 +78,23 @@ io.on('connection', (socket) => {
             fs.appendFileSync('free_responses.log', log);
         }
     });
+
+    socket.on('kickStudent', (studentName) => {
+        const socketIdToKick = Object.keys(gameState.students).find(
+            id => gameState.students[id].name === studentName
+        );
+
+        if (socketIdToKick) {
+            const kickedSocket = io.sockets.sockets.get(socketIdToKick);
+            if (kickedSocket) {
+                kickedSocket.disconnect();
+                delete gameState.students[socketIdToKick];
+
+                const names = Object.values(gameState.students).map(s => s.name);
+                io.emit('updateStudentList', names);
+            }
+        }
+    });
 });
 
 app.get('/get-logs', (req, res) => {

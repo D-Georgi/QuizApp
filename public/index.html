@@ -82,6 +82,14 @@
             }
         });
 
+        socket.on('disconnect', (reason) => {
+            if (reason === "io server disconnect") {
+                // This means the teacher manually kicked them
+                alert("You have been removed from the game.");
+                location.reload(); // Refresh to the join screen
+            }
+        });
+
         function send(val) {
             socket.emit('submitAnswer', val);
             document.getElementById('ui').innerHTML = '';
